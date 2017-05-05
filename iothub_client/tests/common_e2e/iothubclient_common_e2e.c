@@ -676,8 +676,6 @@ void e2e_d2c_with_svc_fault_ctrl(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, cons
     // Send the Event from the client
     (void)printf("Send message and wait for confirmation...\r\n");
     d2cMessage = client_create_and_send_d2c(iotHubClientHandle);
-
-    (void)printf("Wait for fault control message confirmation...\r\n");
     // Wait for confirmation that the event was recevied
     bool dataWasRecv = client_wait_for_d2c_confirmation(d2cMessage);
     ASSERT_IS_TRUE_WITH_MSG(dataWasRecv, "Failure sending data to IotHub"); // was received by the callback...
@@ -793,7 +791,6 @@ void e2e_d2c_with_svc_fault_ctrl_with_transport_status(IOTHUB_CLIENT_TRANSPORT_P
     // Send the Event from the client
     (void)printf("Send message after the server fault and wait for confirmation...\r\n");
     d2cMessage = client_create_and_send_d2c(iotHubClientHandle);
-
     // Wait for confirmation that the event was recevied
     dataWasRecv = client_wait_for_d2c_confirmation(d2cMessage);
     ASSERT_IS_TRUE_WITH_MSG(dataWasRecv, "Failure sending data to IotHub"); // was received by the callback...
