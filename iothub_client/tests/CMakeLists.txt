@@ -14,8 +14,8 @@ function(addSupportedTransportsToTest whatExecutableIsBuilding)
     endif()
 
     if(${use_amqp})
-        linkUAMQP(${whatExecutableIsBuilding})
     	target_link_libraries(${whatExecutableIsBuilding} iothub_client_amqp_transport iothub_client_amqp_ws_transport)
+        linkUAMQP(${whatExecutableIsBuilding})
     	add_definitions(-DTEST_AMQP)
     endif()
 
