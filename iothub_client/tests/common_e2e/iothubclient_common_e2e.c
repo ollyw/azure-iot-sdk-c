@@ -14,6 +14,16 @@
 #include "umock_c.h"
 #endif
 
+#ifdef LINUX
+#include <unistd.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+//#include <arpa/inet.h>
+#include <sys/socket.h>
+#endif
+
 #include "testrunnerswitcher.h"
 
 #include "iothub_client.h"
@@ -329,6 +339,84 @@ static void EventData_Destroy(EXPECTED_SEND_DATA* data)
     }
 }
 
+#ifdef LINUX
+static char* get_target_mac_address()
+{
+    char* result;
+    int s;
+    
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        LogError("Failure: socket create failure %d.", s);
+        result = NULL;
+    }
+    else
+    {
+        struct ifreq ifr;
+        struct ifconf ifc;
+        char buf[1024];
+
+        ifc.ifc_len = sizeof(buf);
+        ifc.ifc_buf = buf;
+
+        if (ioctl(s, SIOCGIFCONF, &ifc) == -1)
+        {
+            LogError("ioctl failed querying socket (SIOCGIFCONF)");
+            result = NULL;
+        }
+        else 
+        {
+            struct ifreq* it = ifc.ifc_req;
+            const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
+            
+            result = NULL;
+            
+            for (; it != end; ++it)
+            {
+                strcpy(ifr.ifr_name, it->ifr_name);
+
+                if (ioctl(s, SIOCGIFFLAGS, &ifr) != 0)
+                {
+                    LogError("ioctl failed querying socket (SIOCGIFFLAGS)");
+                    break;
+                }
+                else if (ioctl(s, SIOCGIFHWADDR, &ifr) != 0)
+                {
+                    LogError("ioctl failed querying socket (SIOCGIFHWADDR)");
+                    break;
+                }
+                else if (ioctl(s, SIOCGIFADDR, &ifr) != 0)
+                {
+                    LogError("ioctl failed querying socket (SIOCGIFADDR)");
+                    break;
+                }
+                else if (strcmp(ifr.ifr_name, "eth0") == 0)
+                {
+                    unsigned char* mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+                    
+                    if ((result = (char*)malloc(sizeof(char) * 18)) == NULL)
+                    {
+                        LogError("failed formatting mac address (malloc failed)");
+                    }
+                    else if (sprintf(result, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]) <= 0)
+                    {
+                        LogError("failed formatting mac address (sprintf failed)");
+                        free(result);
+                        result = NULL;
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
+        close(s);
+    }
+    
+    return result;
+}
+#endif //LINUX
+
 
 void e2e_init(void)
 {
@@ -372,6 +460,20 @@ IOTHUB_CLIENT_HANDLE client_connect_to_hub(IOTHUB_PROVISIONED_DEVICE* deviceToUs
     (void)IoTHubClient_SetOption(iotHubClientHandle, "TrustedCerts", certificates);
 
     (void)IoTHubClient_SetOption(iotHubClientHandle, OPTION_PRODUCT_INFO, "MQTT_E2E/1.1.12");
+
+#ifdef LINUX
+    if (protocol == AMQP_Protocol || protocol == MQTT_Protocol)
+    {
+        char* mac_address = get_target_mac_address();
+        ASSERT_IS_NOT_NULL_WITH_MSG(mac_address, "failed getting the target MAC ADDRESS");
+
+        result = IoTHubClient_SetOption(iotHubClientHandle, OPTION_NET_INT_MAC_ADDRESS, mac_address);
+        ASSERT_ARE_EQUAL_WITH_MSG(IOTHUB_CLIENT_RESULT, IOTHUB_CLIENT_OK, result, "failed to set the target network interface");
+
+        LogInfo("Target MAC ADDRESS: %s", mac_address);
+        free(mac_address);
+    }
+#endif //LINUX
 
     return iotHubClientHandle;
 }

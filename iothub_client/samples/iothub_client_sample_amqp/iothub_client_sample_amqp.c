@@ -18,7 +18,7 @@
 /*String containing Hostname, Device Id & Device Key in the format:                         */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>"    */
-static const char* connectionString = "[device connection string]";
+static const char* connectionString = "HostName=iot-sdks-test.azure-devices.net;DeviceId=ewertons-device1;SharedAccessKey=hT4tkv1auVqMUCZ0HWZFQC0lyuHFf6decNPuc+ZhWCg=";
 
 static int callbackCounter;
 static bool g_continueRunning;
@@ -155,6 +155,12 @@ void iothub_client_sample_amqp_run(void)
         {
             bool traceOn = true;
             IoTHubClient_LL_SetOption(iotHubClientHandle, "logtrace", &traceOn);
+
+            const char* mac_address = "00:00:7F:00:00:01";
+            if (IoTHubClient_LL_SetOption(iotHubClientHandle, "net_interface_mac_address", mac_address) != IOTHUB_CLIENT_OK)
+            {
+                (void)printf("ERROR: failed setting target mac address\r\n");
+            }
 
 #ifdef MBED_BUILD_TIMESTAMP
             // For mbed add the certificate information
